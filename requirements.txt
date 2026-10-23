@@ -1,0 +1,12 @@
+# Labelling pipeline (install torch first, matching your CUDA, from pytorch.org)
+demucs
+whisperx
+beat-this
+librosa
+soundfile
+numpy
+
+# Evaluation and stock BTC (third_party/BTC-ISMIR19)
+mir_eval
+pyyaml
+pretty_midi

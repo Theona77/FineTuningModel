@@ -1,0 +1,29 @@
+# Copyrighted material: never commit
+data/songs/
+data/charts/
+data/overrides.json
+out/
+stems/
+*.wav
+*.mp3
+*.flac
+*.m4a
+
+# Models and results
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+results/
+predictions/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+
+# Training
+runs/
+cache/
