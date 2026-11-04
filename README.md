@@ -10,6 +10,7 @@ Annotate_Chords/     corrected .lab files, fixed by ear from the drafts (trainin
 training/            BTC fine-tuning with factorised heads (train.py, predict.py)
 evaluation/          run_btc.py (stock BTC baseline), evaluate.py (mir_eval scoring)
 labeling/            optional: audio + chord chart -> timed .lab labels (pipeline.py)
+annotator/           local Chordify-style web editor for correcting the drafts (run.sh)
 third_party/         BTC-ISMIR19 (git submodule, includes pretrained checkpoints)
 runs/                training outputs (gitignored except configs)
 ```

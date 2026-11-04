@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chord Annotator</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Chord Annotator</h1>
+  <form id="loadForm">
+    <input id="labPick" list="labList" placeholder="Pilih lagu (.lab)…" required autocomplete="off">
+    <datalist id="labList"></datalist>
+    <input id="url" type="url" placeholder="Link YouTube…" required>
+    <button type="submit">Muat</button>
+  </form>
+  <button id="historyBtn" type="button">Riwayat</button>
+  <span id="saveState"></span>
+  <span id="status"></span>
+</header>
+
+<section id="home">
+  <h2>Terakhir dikerjakan</h2>
+  <div id="homeHistory" class="hist"></div>
+</section>
+
+<section id="workspace" hidden>
+  <div class="bar" id="songbar">
+    <strong id="songTitle"></strong>
+    <span class="muted" id="songMeta"></span>
+    <span class="spacer"></span>
+    <label class="btn">Import .lab<input id="labFile" type="file" accept=".lab,.txt" hidden></label>
+    <button id="pasteBtn">Tempel .lab</button>
+    <button id="copyBtn" title="⌘⇧C">Copy .lab</button>
+  </div>
+
+  <div class="bar" id="transport">
+    <button id="playBtn" title="Space">▶</button>
+    <span id="time" class="mono">0:00.00</span>
+    <input id="seek" type="range" min="0" step="0.01" value="0">
+    <span id="dur" class="mono">0:00</span>
+    <select id="rate" title="Kecepatan">
+      <option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option>
+    </select>
+    <label><input id="follow" type="checkbox" checked> Ikuti</label>
+    <label><input id="loop" type="checkbox"> Loop seleksi (L)</label>
+    <button id="undoBtn" title="⌘Z">↶</button>
+    <button id="redoBtn" title="⇧⌘Z">↷</button>
+  </div>
+
+  <div class="bar" id="gridbar">
+    <label>Beat
+      <select id="gMode"><option value="detected">Deteksi</option><option value="manual">Manual</option></select>
+    </label>
+    <span id="detOpts">
+      <label>Tempo <select id="gScale"><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+    </span>
+    <span id="manOpts" hidden>
+      <label>BPM <input id="gBpm" type="number" step="0.01" min="30" max="300"></label>
+      <label>Beat pertama (s) <input id="gOffset" type="number" step="0.001" min="0"></label>
+      <button id="gSetFirst" title="Pakai posisi audio sekarang sebagai beat pertama">⌖ dari playhead</button>
+    </span>
+    <label>Ketuk/bar <select id="gBpb"><option>2</option><option>3</option><option selected>4</option><option>6</option></select></label>
+    <label>Geser bar <button id="gShiftL">◀</button><button id="gShiftR">▶</button></label>
+    <label>Resolusi <select id="gSub"><option value="1">1 ketuk</option><option value="2">½ ketuk</option></select></label>
+    <label>Bar/baris <select id="gBpr"><option>2</option><option selected>4</option><option>8</option></select></label>
+  </div>
+
+  <main id="grid"></main>
+
+  <footer id="picker">
+    <div class="pickinfo"><span id="selInfo" class="mono">Klik kotak untuk memilih</span>
+      <span class="muted keys">A–G root · # naik ½ · M minor · 7 · J maj7 · 4 sus4 · 2 sus2 · N · seret nama chord = pindah · seret kotak = pilih · ⌫ gabung ke kiri · dbl-klik pilih segmen · ⇧ perluas</span></div>
+    <div class="row" id="rootRow"></div>
+    <div class="row" id="qualRow"></div>
+    <div class="row" id="bassRow"></div>
+  </footer>
+</section>
+
+<dialog id="historyDlg">
+  <h3>Riwayat (di komputer ini)</h3>
+  <div id="dlgHistory" class="hist"></div>
+  <form method="dialog"><div class="dlgbtns"><button>Tutup</button></div></form>
+</dialog>
+
+<dialog id="pasteDlg">
+  <form method="dialog">
+    <p>Tempel isi .lab (<code>start end label</code> per baris):</p>
+    <textarea id="pasteText" rows="16"></textarea>
+    <div class="dlgbtns"><button value="cancel">Batal</button><button value="ok" class="primary">Import</button></div>
+  </form>
+</dialog>
+
+<audio id="audio" preload="auto"></audio>
+<script src="app.js"></script>
+</body>
+</html>
