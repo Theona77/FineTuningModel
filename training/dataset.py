@@ -70,8 +70,21 @@ def make_splits(song_ids: list[str], val: float, test: float, seed: int) -> dict
     return out
 
 
-def load_or_create_splits(path: Path, song_ids: list[str], val: float, test: float, seed: int):
-    """Existing split file wins (new songs go to train); otherwise create and save one."""
+def load_or_create_splits(path: Path, song_ids: list[str], val: float, test: float, seed: int,
+                          test_only: list[str] = ()):
+    """Existing split file wins (new songs go to train); otherwise create and save one.
+
+    Songs in test_only (and their other versions) are never trained on: they go to a separate
+    'holdout' split that is scored apart from the regular test set.
+    """
+    held = {song_group(s) for s in test_only}
+    holdout = sorted(s for s in song_ids if song_group(s) in held)
+    song_ids = [s for s in song_ids if song_group(s) not in held]
+    splits = _load_or_create(path, song_ids, val, test, seed)
+    return {**splits, "holdout": holdout}
+
+
+def _load_or_create(path: Path, song_ids: list[str], val: float, test: float, seed: int):
     if path.exists():
         splits = json.loads(path.read_text())
         known = {s for v in splits.values() for s in v}

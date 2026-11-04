@@ -11,6 +11,12 @@ data:
   val_fraction: 0.15
   test_fraction: 0.15
   split_seed: 42
+  test_only:                    # never trained on; scored as a separate 'holdout' split
+    - thats_who_i_praise        # chart arrangement doesn't match the recording
+    - holy_spirit               # chart covers only part of the song
+    - what_a_beautiful_name     # chart fits the audio poorly in every key
+    - run_to_the_father         # chart is the Women Who Worship arrangement, audio is Cody Carnes
+    - praise                    # live recording has sections the chart lacks
 
 model:
   init: btc_large               # btc_large | btc_majmin | none | path/to/checkpoint.pt

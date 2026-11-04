@@ -27,3 +27,8 @@ venv/
 # Training
 runs/
 cache/
+
+# Local download/staging folders (copyrighted audio)
+youtube_audio_batch/
+chord_audio/
+Worship Song/

@@ -11,7 +11,6 @@ training/btc_compat.py, which makes that 2019 code run on numpy 2, PyYAML 6 and 
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
@@ -19,8 +18,8 @@ import numpy as np
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "training"))
-from btc_compat import (BTC_DIR, BTC_model, HParams, audio_file_to_features,  # noqa: E402
-                        idx2chord, idx2voca_chord)
+from btc_compat import BTC_DIR, BTC_model, HParams, idx2chord, idx2voca_chord  # noqa: E402
+from features import FRAME_SECONDS, compute_features  # noqa: E402  (same features, any format)
 
 AUDIO_EXTS = (".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac", ".opus")
 
@@ -50,13 +49,9 @@ def load_btc(large_voca: bool, device: torch.device):
 
 @torch.no_grad()
 def predict(audio_path: Path, model, config, mean, std, idx_to_chord, device) -> list[tuple[float, float, str]]:
-    cwd = os.getcwd()
-    os.chdir(BTC_DIR)            # BTC resolves some paths relative to its own directory
-    try:
-        feature, time_unit, song_length = audio_file_to_features(str(audio_path), config)
-    finally:
-        os.chdir(cwd)
-    feature = (feature.T - mean) / std
+    feature = compute_features(audio_path)
+    time_unit, song_length = FRAME_SECONDS, len(feature) * FRAME_SECONDS
+    feature = (feature - mean) / std
     n = config.model["timestep"]
     n_frames = feature.shape[0]
     feature = np.pad(feature, ((0, (-n_frames) % n), (0, 0)))

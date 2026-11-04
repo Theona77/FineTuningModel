@@ -9,6 +9,7 @@ BTC's mean/std happens at training time, after augmentation.
 from __future__ import annotations
 
 import hashlib
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -26,10 +27,17 @@ FRAME_SECONDS = CHUNK_SECONDS / TIMESTEP
 LOG_FLOOR = float(np.log(1e-6))       # feature value of silence; used to pad pitch shifts
 
 
+def load_audio(audio_path: Path, sr: int = SR) -> np.ndarray:
+    """Mono float32 audio via ffmpeg, so every format works (librosa 1.0 can't read .m4a)."""
+    out = subprocess.run(["ffmpeg", "-v", "error", "-i", str(audio_path), "-f", "f32le",
+                          "-ac", "1", "-ar", str(sr), "-"], capture_output=True, check=True)
+    return np.frombuffer(out.stdout, dtype=np.float32).copy()
+
+
 def compute_features(audio_path: Path) -> np.ndarray:
     """Raw log-CQT, shape [frames, 144]. Matches BTC's audio_file_to_features."""
     import librosa
-    y, _ = librosa.load(str(audio_path), sr=SR, mono=True)
+    y = load_audio(audio_path)
     chunk = int(SR * CHUNK_SECONDS)
     parts, start = [], 0
     while len(y) > start + chunk:

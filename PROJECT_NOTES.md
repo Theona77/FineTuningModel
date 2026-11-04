@@ -41,19 +41,19 @@ Expect add9, sus2/sus4 and slash chords (G/B, C/E, D/F#).
 | 8 | Reckless Love | Cory Asbury |
 | 9 | King of Kings | Hillsong Worship |
 | 10 | Gratitude | Brandon Lake |
-| 11 | Firm Foundation | Cody Carnes |
-| 12 | The Blessing | Kari Jobe & Cody Carnes |
-| 13 | Holy Spirit | Bryan & Katie Torwalt |
-| 14 | 10,000 Reasons | Matt Redman |
-| 15 | Cornerstone | Hillsong Worship |
+| 11 | Firm Foundation | Cody Carnes | v
+| 12 | The Blessing | Kari Jobe & Cody Carnes | v
+| 13 | Holy Spirit | Bryan & Katie Torwalt | v
+| 14 | 10,000 Reasons | Matt Redman |  v
+| 15 | Cornerstone | Hillsong Worship | v
 | 16 | Living Hope | Phil Wickham |
 | 17 | Raise a Hallelujah | Bethel Music |
-| 18 | Who You Say I Am | Hillsong Worship |
+| 18 | Who You Say I Am | Hillsong Worship | v
 | 19 | O Come to the Altar | Elevation Worship |
 | 20 | Champion | Bethel Music |
 | 21 | Jireh | Elevation Worship & Maverick City |
-| 22 | Same God | Elevation Worship |
-| 23 | Promises | Maverick City Music |
+| 22 | Same God | Elevation Worship | v 
+| 23 | Promises | Maverick City Music | v 
 | 24 | Talking to Jesus | Elevation Worship & Maverick City |
 | 25 | Tremble | Mosaic MSC |
 
@@ -62,13 +62,13 @@ Expect 9ths, 11ths, 13ths, many slash chords and passing chords.
 
 | # | Song | Artist |
 |---|---|---|
-| 26 | Break Every Chain | Tasha Cobbs Leonard |
-| 27 | Gracefully Broken | Tasha Cobbs Leonard |
-| 28 | Your Spirit | Tasha Cobbs Leonard |
+| 26 | Break Every Chain | Tasha Cobbs Leonard | v
+| 27 | Gracefully Broken | Tasha Cobbs Leonard | v 
+| 28 | Your Spirit | Tasha Cobbs Leonard | v
 | 29 | Total Praise | Richard Smallwood |
 | 30 | Never Would Have Made It | Marvin Sapp |
 | 31 | I Need You to Survive | Hezekiah Walker |
-| 32 | Every Praise | Hezekiah Walker |
+| 32 | Every Praise | Hezekiah Walker | 
 | 33 | Withholding Nothing | William McDowell |
 | 34 | I Give Myself Away | William McDowell |
 | 35 | Alpha and Omega | Israel Houghton |

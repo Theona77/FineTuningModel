@@ -209,11 +209,11 @@ def main(argv=None) -> int:
         return 1
     d = cfg["data"]
     splits = load_or_create_splits(resolve(d["splits_file"]), sorted(songs), d["val_fraction"],
-                                   d["test_fraction"], d["split_seed"])
+                                   d["test_fraction"], d["split_seed"], d.get("test_only") or [])
     (run_dir / "splits.json").write_text(json.dumps(splits, indent=2))
     cache = resolve(d["cache_dir"])
     print(f"device {device}; songs: {len(splits['train'])} train, {len(splits['val'])} val, "
-          f"{len(splits['test'])} test")
+          f"{len(splits['test'])} test, {len(splits['holdout'])} holdout")
     t0 = time.time()
     for i, sid in enumerate(sorted(songs), 1):
         songs[sid].load(cache)
@@ -222,6 +222,7 @@ def main(argv=None) -> int:
     train_songs = [songs[s] for s in splits["train"]]
     val_songs = [songs[s] for s in splits["val"]] or train_songs[:1]
     test_songs = [songs[s] for s in splits["test"]]
+    holdout_songs = [songs[s] for s in splits["holdout"]]
     if not splits["val"]:
         print("warning: no validation songs; validating on a training song (add more songs)")
     if not train_songs:
@@ -310,6 +311,10 @@ def main(argv=None) -> int:
         results["test"] = evaluate(model, test_songs, mean, std, device, cfg)
         write_predictions(model, test_songs, mean, std, device, cfg, run_dir / "predictions" / "test")
         print("test: " + " ".join(f"{k} {v:.3f}" for k, v in results["test"].items()))
+    if holdout_songs:   # labels from mismatched charts: scored separately, never mixed into test
+        results["holdout"] = evaluate(model, holdout_songs, mean, std, device, cfg)
+        write_predictions(model, holdout_songs, mean, std, device, cfg, run_dir / "predictions" / "holdout")
+        print("holdout: " + " ".join(f"{k} {v:.3f}" for k, v in results["holdout"].items()))
     (run_dir / "test_metrics.json").write_text(json.dumps(results, indent=2))
     print(f"saved {run_dir}")
     return 0

@@ -390,6 +390,7 @@ class ChordAnchor:
     harte: str
     word_index: int | None     # index into ChartLine.words; None for chord-only lines
     trailing: bool = False     # sits after the last word -> anchored to word end
+    beat_offset: int = 0       # 2nd, 3rd... trailing chord: this many beats after the word end
 
 
 @dataclass
@@ -406,7 +407,7 @@ class ChartLine:
         return not self.words and bool(self.chords)
 
     def chord_key(self) -> tuple:
-        return tuple((c.harte, c.word_index, c.trailing) for c in self.chords)
+        return tuple((c.harte, c.word_index, c.trailing, c.beat_offset) for c in self.chords)
 
 
 _SECTION_RE = re.compile(
@@ -417,6 +418,18 @@ _SECTION_RE = re.compile(
 _DIRECTIVE_RE = re.compile(r"^\s*\{\s*([^:}]+?)\s*(?::\s*(.*?))?\s*\}\s*$")
 _CHORD_LINE_JUNK = re.compile(r"^(\||-+|/|\.|x\d+|\(x\d+\)|\d+x|\(|\)|%|:\|\||\|\|:)$", re.IGNORECASE)
 _REPEAT_TOKEN = re.compile(r"^\(?(x\d+|\d+x|repeat)\)?$", re.IGNORECASE)
+_REPEAT_LINE = re.compile(r"^\s*[\[(]?\s*(repeat|play)\b.*$", re.IGNORECASE)   # "REPEAT CHORUS"
+
+
+def _bracket_chords(content: str) -> list[str]:
+    """Chords inside one [...]: a single chord, or bar notation like "| Ab / / Db | Ab / / / |"."""
+    if is_chord(content):
+        return [content]
+    tokens = content.split()
+    chords = [t for t in tokens if is_chord(t)]
+    if chords and all(is_chord(t) or _CHORD_LINE_JUNK.match(t) for t in tokens):
+        return chords
+    return []
 
 
 def _is_chord_line(line: str) -> bool:
@@ -502,6 +515,8 @@ def parse_chordpro(text: str) -> list[ChartLine]:
                 is_chord(c) for c in re.findall(r"\[([^\]]+)\]", line)):
             section = line.strip().strip("[]():").strip()
             continue
+        if _REPEAT_LINE.match(line) and not re.search(r"\[[^\]]+\]", line):
+            continue
 
         # Strip [chords], remembering the character offset where each sat.
         text_parts, chord_pos = [], []
@@ -522,23 +537,22 @@ def parse_chordpro(text: str) -> list[ChartLine]:
 
         anchors: list[ChordAnchor] = []
         stacked: list[str] = []
-        for p, sym in chord_pos:
-            try:
+        for p, content in chord_pos:
+            for sym in _bracket_chords(content):    # [] holding no chord, e.g. [x2], is skipped
                 harte = chord_to_harte(sym)
-            except (ValueError, KeyError):
-                continue                       # annotations like [x2] or [Riff]
-            if not words:
-                anchors.append(ChordAnchor(sym, harte, None))
-                continue
-            idx = next((k for k, (s, e, _) in enumerate(word_spans) if e > p), None)
-            if idx is None:
-                anchor = ChordAnchor(sym, harte, len(words) - 1, trailing=True)
-            else:
+                if not words:
+                    anchors.append(ChordAnchor(sym, harte, None))
+                    continue
+                idx = next((k for k, (s, e, _) in enumerate(word_spans) if e > p), None)
+                if idx is None:
+                    prev = anchors[-1] if anchors and anchors[-1].trailing else None
+                    anchors.append(ChordAnchor(sym, harte, len(words) - 1, trailing=True,
+                                               beat_offset=prev.beat_offset + 1 if prev else 0))
+                    continue
                 anchor = ChordAnchor(sym, harte, idx)
-            if anchors and (anchors[-1].word_index, anchors[-1].trailing) == (
-                    anchor.word_index, anchor.trailing):
-                stacked.append(anchors.pop().symbol)
-            anchors.append(anchor)
+                if anchors and (anchors[-1].word_index, anchors[-1].trailing) == (idx, False):
+                    stacked.append(anchors.pop().symbol)
+                anchors.append(anchor)
         if not words and not anchors:
             continue
         lines.append(ChartLine(len(lines), section, words, anchors, lyric.strip(), stacked))
@@ -565,7 +579,7 @@ def chart_to_chordpro(lines: list[ChartLine]) -> str:
             out.append(" ".join(f"[{c.symbol}]" for c in ln.chords))
             continue
         words = list(ln.words)
-        for c in reversed(ln.chords):
+        for c in ln.chords:
             if c.trailing:
                 words[c.word_index] = words[c.word_index] + f" [{c.symbol}]"
             else:
@@ -582,7 +596,7 @@ def transpose_chart(lines: list[ChartLine], semitones: int) -> list[ChartLine]:
         chords = []
         for c in ln.chords:
             sym = transpose_symbol(c.symbol, semitones)
-            chords.append(ChordAnchor(sym, chord_to_harte(sym), c.word_index, c.trailing))
+            chords.append(ChordAnchor(sym, chord_to_harte(sym), c.word_index, c.trailing, c.beat_offset))
         out.append(ChartLine(ln.index, ln.section, ln.words, chords, ln.text, ln.stacked))
     return out
 
@@ -683,6 +697,8 @@ MIN_LINE_WORDS = 3
 GAP_HOLD = 3.0
 MIN_EVENT_GAP = 0.05
 MAX_WORD_GAP = 4.0      # a line match may not span a silence longer than this
+MIN_GAP = 1.5           # shorter unaligned stretches just extend the previous chord
+DEFAULT_BEAT = 0.5      # seconds, when there is no beat grid
 
 
 def fill_missing_word_times(raw_words: list[dict]) -> list[Word]:
@@ -714,6 +730,14 @@ def snap_to_beats(t: float, beats: list[float]) -> tuple[float, bool]:
     if abs(beats[j] - t) <= period / 2:
         return beats[j], True
     return t, False
+
+
+def _beat_period(t: float, beats: list[float]) -> float:
+    """Local beat length around time t."""
+    if len(beats) < 2:
+        return DEFAULT_BEAT
+    k = min(max(bisect.bisect_left(beats, t), 1), len(beats) - 1)
+    return beats[k] - beats[k - 1]
 
 
 def _find_candidates(line_tokens: list[str], transcript: list[str],
@@ -880,7 +904,7 @@ def align_chart(
                                      f"dropped {', '.join(ln.stacked)} in line {ln.index}"))
         for c in ln.chords:
             ws, we = times[c.word_index]
-            t = we if c.trailing else ws
+            t = we + c.beat_offset * _beat_period(we, beats) if c.trailing else ws
             t_snap, snapped = snap_to_beats(t, beats)
             flags = []
             if interp[c.word_index]:
@@ -943,7 +967,7 @@ def align_chart(
         for k, e in enumerate(events):
             nxt = events[k + 1].time if k + 1 < len(events) else audio_end
             hold_until = max(sung_end_before(e.time), e.time) + GAP_HOLD
-            if nxt > hold_until:
+            if nxt > hold_until + MIN_GAP:
                 add(e.time, hold_until, e.harte)
                 where = "outro" if k + 1 == len(events) else "instrumental/vamp"
                 before = events[k + 1].line_index if k + 1 < len(events) else None
@@ -1121,6 +1145,30 @@ def _run_tests() -> None:
     res3 = align_chart(lines3, words3, [0.0, 2.0, 4.0, 6.0], duration=8.0)
     assert [e.harte for e in res3.events] == ["G:maj", "D:maj"], res3.events
     print("  beat-collision OK")
+
+    # Patterns from real WorshipTogether charts: bar notation in brackets, several chords
+    # after the last word, "REPEAT CHORUS" lines.
+    chart4 = ("Intro\n[| Ab / / Db | Ab / / / |]\n\nVerse 1\n"
+              "With every breath that I am [Ab]able [Eb/G] [Fm]\nREPEAT CHORUS\n")
+    lines4 = parse_chart(chart4)
+    assert [c.symbol for c in lines4[0].chords] == ["Ab", "Db", "Ab"], lines4[0]
+    assert len(lines4) == 2 and not lines4[1].stacked, lines4
+    assert [(c.symbol, c.trailing, c.beat_offset) for c in lines4[1].chords] == [
+        ("Ab", False, 0), ("Eb/G", True, 0), ("Fm", True, 1)], lines4[1].chords
+    words4 = [Word(w, t, t + 0.3) for w, t in
+              zip("with every breath that i am able".split(), (1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0))]
+    res4 = align_chart(lines4, words4, [k * 0.5 for k in range(30)], duration=15.0)
+    ev = [(e.symbol, e.time) for e in res4.events]
+    assert ev == [("Ab", 4.0), ("Eb/G", 4.5), ("Fm", 5.0)], ev
+    print("  bar notation / trailing chords / repeat lines OK")
+
+    # A gap shorter than MIN_GAP after the hold is absorbed into the chord, not marked X.
+    lines5 = parse_chart("[G]one two three\n[C]four five six\n")
+    words5 = [Word(w, t, t + 0.3) for w, t in
+              zip("one two three four five six".split(), (0.0, 0.5, 1.0, 5.0, 5.5, 6.0))]
+    res5 = align_chart(lines5, words5, [], duration=8.0)
+    assert [s.label for s in res5.segments] == ["G:maj", "C:maj"], res5.segments
+    print("  short-gap absorption OK")
 
     # Key check: a G-major chart against a C-major-ish chroma -> shift of +5 (or -7).
     gprof = chart_pitch_profile(parse_chart("[G]a b c [C]d [D]e f [Em]g\n"))
