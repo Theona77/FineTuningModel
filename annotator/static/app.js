@@ -28,7 +28,10 @@ const BASS_IV = ['1', 'b2', '2', 'b3', '3', '4', '#4', '5', 'b6', '6', 'b7', '7'
 const DEGREE = { b2: 1, '2': 2, b3: 3, '3': 4, '4': 5, '#4': 6, b5: 6, '5': 7, '#5': 8, b6: 8, '6': 9, b7: 10, '7': 11 };
 
 function normNote(n) {
+  if (!n) return null;
   n = n.replace('♯', '#').replace('♭', 'b');
+  // Note names only. Leave Harte degrees like b7 alone (the leading b is an accidental).
+  if (/^[A-Ga-g][#b♯♭]?$/.test(n)) n = n[0].toUpperCase() + n.slice(1);
   if (ENHARM[n]) return ENHARM[n];
   return NOTES.includes(n) ? n : null;
 }
@@ -40,7 +43,7 @@ function parseChord(lab) {
   let main = lab, bass = null;
   const sl = lab.lastIndexOf('/');
   if (sl > 0) { main = lab.slice(0, sl); bass = lab.slice(sl + 1); }
-  const m = main.match(/^([A-G][#b♯♭]?):?(.*)$/);
+  const m = main.match(/^([A-Ga-g][#b♯♭]?):?(.*)$/);
   if (!m || !normNote(m[1])) return { raw: lab };
   const root = normNote(m[1]);
   const qual = QALIAS[m[2]] !== undefined ? QALIAS[m[2]] : m[2];
@@ -84,6 +87,7 @@ const S = {
   beatOf: [],             // cell index -> beat index
   marks: [],              // chord label at a change, null = continues previous
   sel: null, anchor: 0,
+  arm: null,             // {sharp} while waiting for the bass note after "/"
   undo: [], redo: [],
   nowCell: -1, audioDeleted: false,
   labPath: null,          // draft .lab being edited (relative to the server's LAB_DIR)
@@ -231,11 +235,24 @@ function render() {
 function paintSel() {
   S.cellEls.forEach((el) => el.classList.remove('sel'));
   const info = $('selInfo');
-  if (!S.sel) { info.textContent = 'Klik kotak untuk memilih'; paintPicker(null); return; }
+  const input = $('chordInput');
+  if (!S.sel) {
+    info.textContent = 'Klik kotak untuk memilih';
+    if (input) { input.value = ''; input.disabled = true; }
+    paintPicker(null);
+    return;
+  }
   for (let i = S.sel.a; i <= S.sel.b; i++) S.cellEls[i].classList.add('sel');
   const eff = effective(), lab = eff[S.sel.a];
   const n = S.sel.b - S.sel.a + 1;
+  const c = parseChord(lab);
   info.textContent = `${fmtTime(S.starts[S.sel.a])}–${fmtTime(cellEnd(S.sel.b))} · ${n} kotak · ${lab}`;
+  if (c && c.bass) info.textContent += ` · file ${toHarte(lab)}`;
+  if (S.arm) info.textContent += S.arm.sharp ? ' · bass #: tekan A–G' : ' · bass: tekan A–G';
+  if (input) {
+    input.disabled = false;
+    if (document.activeElement !== input) input.value = lab || '';
+  }
   paintPicker(lab);
 }
 
@@ -269,7 +286,12 @@ function pushUndo() { S.undo.push(snapshot()); if (S.undo.length > 300) S.undo.s
 
 function applyLabel(label) {
   if (!S.sel) return;
+  const armed = S.arm;
+  S.arm = null;
   const { a, b } = S.sel, eff = effective(), n = S.marks.length;
+  let same = true;
+  for (let i = a; i <= b; i++) if (eff[i] !== label) { same = false; break; }
+  if (same) { if (armed) paintSel(); return; }
   pushUndo();
   if (b + 1 < n && S.marks[b + 1] === null) S.marks[b + 1] = eff[b + 1];
   S.marks[a] = label;
@@ -279,13 +301,39 @@ function applyLabel(label) {
 }
 
 function curChord() { return S.sel ? parseChord(effective()[S.sel.a]) : null; }
+const shiftNote = (n, semi) => NOTES[(NOTES.indexOf(n) + semi + 120) % 12];
 function pickRoot(r) {
   if (r === 'N') return applyLabel('N');
   const c = curChord();
-  applyLabel(formatChord({ root: r, qual: c && c.root && !c.raw ? c.qual : 'maj', bass: null }));
+  let bass = c && c.bass ? c.bass : null;
+  if (bass === r) bass = null;
+  applyLabel(formatChord({ root: r, qual: c && c.root && !c.raw ? c.qual : 'maj', bass }));
 }
 function pickQual(q) { const c = curChord(); if (c && c.root) applyLabel(formatChord({ ...c, qual: q })); }
 function pickBass(bs) { const c = curChord(); if (c && c.root) applyLabel(formatChord({ ...c, bass: bs || null })); }
+
+// Chord box: B/A, Bm/A, b/a, D/F#. Incomplete "B/" is left alone so the bass can still be typed.
+function commitTyped() {
+  const input = $('chordInput');
+  if (!input || !S.sel) return false;
+  const raw = input.value.trim().replace(/\s+/g, '');
+  if (!raw) { input.value = effective()[S.sel.a] || ''; return false; }
+  if (raw.endsWith('/')) { setStatus('Bass belum lengkap. Contoh: B/A', true); return false; }
+  let label;
+  if (raw === 'N' || raw === 'X') label = raw;
+  else {
+    const c = parseChord(raw);
+    if (!c.root || c.raw || !QINFO[c.qual]) {
+      setStatus('Chord tidak dikenali: ' + raw + '. Contoh: B/A, Bm/A, D/F#', true);
+      return false;
+    }
+    label = formatChord(c);
+  }
+  applyLabel(label);
+  input.value = label;
+  if (label.includes('/')) setStatus(`${label} → file ${toHarte(label)}`);
+  return true;
+}
 
 function undo(redo) {
   const from = redo ? S.redo : S.undo, to = redo ? S.undo : S.redo;
@@ -295,6 +343,7 @@ function undo(redo) {
 }
 
 function select(i, extend) {
+  S.arm = null;
   i = Math.max(0, Math.min(S.starts.length - 1, i));
   if (extend) S.sel = { a: Math.min(S.anchor, i), b: Math.max(S.anchor, i) };
   else { S.sel = { a: i, b: i }; S.anchor = i; }
@@ -303,6 +352,7 @@ function select(i, extend) {
 }
 
 function selectSegment(i) {
+  S.arm = null;
   let a = i, b = i;
   while (a > 0 && S.marks[a] === null) a--;
   while (b + 1 < S.marks.length && S.marks[b + 1] === null) b++;
@@ -548,6 +598,15 @@ function syncGridInputs() {
 
 // ---------- Wiring ----------
 buildPicker();
+$('chordInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); if (commitTyped()) e.target.blur(); }
+  else if (e.key === 'Escape') {
+    e.preventDefault();
+    e.target.value = S.sel ? (effective()[S.sel.a] || '') : '';
+    e.target.blur();
+  }
+});
+$('chordInput').addEventListener('change', commitTyped);
 loadLabList();
 renderHistory($('homeHistory'));
 requestAnimationFrame(tick);
@@ -660,11 +719,27 @@ document.addEventListener('keydown', (e) => {
     if (!e.shiftKey) audio.currentTime = S.starts[S.sel.a];
   }
   else if (k === 'Enter' && S.sel) { audio.currentTime = S.starts[S.sel.a]; audio.play(); }
-  else if (k === 'Escape') { S.sel = null; paintSel(); }
+  else if (k === 'Escape') { if (S.arm) S.arm = null; else S.sel = null; paintSel(); }
   else if (k.toLowerCase() === 'l') $('loop').checked = !$('loop').checked;
   else if (!S.sel) return;
-  else if (/^[a-g]$/i.test(k)) pickRoot(k.toUpperCase());
-  else if (k === '#' && c && c.root) pickRoot(NOTES[(NOTES.indexOf(c.root) + 1) % 12]);
+  else if (k === '/' && c && c.root) {
+    e.preventDefault();
+    S.arm = S.arm && !S.arm.sharp ? null : { sharp: false };
+    paintSel();
+  }
+  else if (S.arm && k === '#') { e.preventDefault(); S.arm.sharp = true; paintSel(); }
+  else if (S.arm && /^[a-g]$/i.test(k)) {
+    e.preventDefault();
+    let n = k.toUpperCase();
+    if (S.arm.sharp) n = shiftNote(n, 1);
+    S.arm = null;
+    pickBass(n);
+  }
+  else if (/^[a-g]$/i.test(k)) { S.arm = null; pickRoot(k.toUpperCase()); }
+  else if (k === '#' && c && c.root) {
+    const bass = c.bass ? shiftNote(c.bass, 1) : null;
+    applyLabel(formatChord({ root: shiftNote(c.root, 1), qual: c.qual, bass }));
+  }
   else if (k.toLowerCase() === 'n') pickRoot('N');
   else if (k.toLowerCase() === 'm' && c && c.root) pickQual(c.qual === 'min' ? 'maj' : 'min');
   else if (k === '7' && c && c.root) pickQual(c.qual === 'min' || c.qual === 'min7' ? 'min7' : '7');

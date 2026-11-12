@@ -61,9 +61,12 @@ The screen uses the familiar spelling; the file is written in Harte syntax, as r
 - Drag a chord name left/right to move where that chord starts.
 - Picker at the bottom: Root, quality (Jenis), and Bass (slash chord). Changing a cell only
   changes the selection; the cells after it keep their chord.
-- Keys: `Space` play/pause, `Enter` play from selection, `A–G` root, `#` up a semitone,
-  `M` minor/major, `7`, `J` maj7, `4` sus4, `2` sus2, `N` no chord, `⌫` merge into the chord on
-  the left, `L` loop selection, `⌘Z` / `⇧⌘Z` undo/redo, `⌘⇧C` copy the labels (on-screen spelling).
+- Keys: `Space` play/pause, `Enter` play from selection, `A–G` root, `/` then `A–G` bass
+  (`B` `/` `A` = B/A; `#` before the bass note makes it sharp), `#` up a semitone (root and bass
+  move together), `M` minor/major, `7`, `J` maj7, `4` sus4, `2` sus2, `N` no chord, `⌫` merge
+  into the chord on the left, `L` loop selection, `⌘Z` / `⇧⌘Z` undo/redo, `⌘⇧C` copy the labels
+  (on-screen spelling). The Chord box accepts the same spelling (`B/A`, `Bm/A`, `D/F#`).
+  Changing the root keeps the bass note.
 - Grid: tempo ½×/2× if the beat tracker picked the wrong speed, Manual mode (BPM + first beat),
   ½-beat resolution for chords that change between beats, and Geser bar to line up beat 1.
 

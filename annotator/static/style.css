@@ -47,7 +47,10 @@ main#grid { padding: 12px 16px 260px; position: relative; z-index: 0; }
 .cell span { pointer-events: none; }
 
 #picker { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; background: var(--panel); border-top: 1px solid var(--line); padding: 8px 16px 10px; box-shadow: 0 -4px 16px rgba(0,0,0,.08); }
-.pickinfo { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px; }
+.pickinfo { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.ctype { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+.ctype input { width: 112px; font-family: ui-monospace, Menlo, monospace; font-weight: 600; }
+.ctype input:disabled { opacity: .45; }
 .keys { font-size: 11px; }
 .row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; }
 .row .lbl { width: 44px; color: var(--muted); font-size: 12px; align-self: center; }

@@ -70,8 +70,10 @@
   <main id="grid"></main>
 
   <footer id="picker">
-    <div class="pickinfo"><span id="selInfo" class="mono">Klik kotak untuk memilih</span>
-      <span class="muted keys">A–G root · # naik ½ · M minor · 7 · J maj7 · 4 sus4 · 2 sus2 · N · seret nama chord = pindah · seret kotak = pilih · ⌫ gabung ke kiri · dbl-klik pilih segmen · ⇧ perluas</span></div>
+    <div class="pickinfo">
+      <label class="ctype">Chord <input id="chordInput" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="B/A" title="Ketik chord lalu Enter. Contoh: B/A, Bm/A, D/F#" disabled></label>
+      <span id="selInfo" class="mono">Klik kotak untuk memilih</span>
+      <span class="muted keys">A–G root · / lalu A–G bass (B/A) · # naik ½ · M minor · 7 · J maj7 · 4 sus4 · 2 sus2 · N · seret nama chord = pindah · seret kotak = pilih · ⌫ gabung ke kiri · dbl-klik pilih segmen · ⇧ perluas</span></div>
     <div class="row" id="rootRow"></div>
     <div class="row" id="qualRow"></div>
     <div class="row" id="bassRow"></div>
